@@ -2,7 +2,62 @@
 
 Provides an authentication system for Platform One by decoding non-encrypted JWTs.
 
+> [!CAUTION]
+> Signatures are not verified.
+
 Additionally provides configurations to automatically populate user attributes and assign user membership from JWT fields.
+
+## Installation
+
+After running `pip install p1-auth` add the following the settings.py file as needed.
+
+```python
+INSTALLED_APPS = [
+    ...
+    'p1_auth',
+    ...
+]
+```
+
+Adding `p1_auth` to the `INSTALLED_APPS` is required for use.
+
+```python
+MIDDLEWARE = [
+    ...
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    ...
+    'p1_auth.middleware.AuthenticateSessionMiddleware',
+    ...
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    ...
+]
+```
+
+The `p1-auth` middleware can be used to force creation of sessions for use with django admin.  If it is used, it should be between django `SessionMiddleware` and `AuthenticationMiddleware` as shown above.
+
+```python
+AUTHENTICATION_BACKENDS = (
+    ...
+    'p1_auth.backends.PlatformOneAuthentication',
+    ...
+)
+```
+
+`PlatformOneAuthentication` authenticates django requests.
+
+```python
+REST_FRAMEWORK = {
+    ...
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        ...
+        'p1_auth.backends.PlatformOneRestAuthentication',
+        ...
+    ],
+    ...
+}
+```
+
+`PlatformOneRestAuthentication` authenticates django-rest-framework requests.
 
 ## settings.py
 
