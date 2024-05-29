@@ -9,7 +9,7 @@ Additionally provides configurations to automatically populate user attributes a
 
 ## Installation
 
-After running `pip install p1-auth` add the following the settings.py file as needed.
+After running `pip install p1-auth` add the following to the settings.py file as needed.
 
 ```python
 INSTALLED_APPS = [
@@ -133,6 +133,14 @@ A flag to require JWTs on every request.
 
 ```python
 REQUIRE_JWT = True
+```
+
+### JWT_PREFERRED_USERNAME_FIELD
+
+The field to use to populate the Username Field of the Django User model.  This defaults to `preferred_username`.
+
+```python
+JWT_PREFERRED_USERNAME_FIELD = "email"
 ```
 
 ## Django Admin

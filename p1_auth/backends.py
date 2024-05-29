@@ -29,7 +29,10 @@ class PlatformOneAuthentication(ModelBackend):
             # determine username and username field
             username = {
                 auth.get_user_model().USERNAME_FIELD:
-                jwt_decoded["preferred_username"]
+                jwt_decoded[getattr(
+                    settings,
+                    "JWT_PREFERRED_USERNAME_FIELD",
+                    "preferred_username")]
             }
 
             # retrieve or create user based on username
