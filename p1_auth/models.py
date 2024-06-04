@@ -1,9 +1,12 @@
+import logging
 from copy import deepcopy
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
+from django.db import DatabaseError, models
 
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 # Create your models here.
 class RelatedAssignment(models.Model):
@@ -62,19 +65,34 @@ class RelatedAssignment(models.Model):
         return False
 
     def __add_user(self, user, obj, field):
-        if field.many_to_many or field.one_to_many:
-            if hasattr(field, 'attname'):
-                getattr(obj, field.attname).add(user)
-            elif hasattr(field, 'related_name'):
-                getattr(obj, field.related_name).add(user)
-        elif field.many_to_one:
-            if hasattr(field.remote_field, 'attname'):
-                getattr(user, field.remote_field.attname).add(obj)
-            elif hasattr(field.remote_field, 'related_name'):
-                getattr(user, field.remote_field.related_name).add(obj)
-        elif field.one_to_one:
-            setattr(obj, field.name, user)
-            obj.save()
+        try:
+            if field.many_to_many or field.one_to_many:
+                if hasattr(field, 'get_accessor_name') and\
+                        field.get_accessor_name():
+                    getattr(obj, field.get_accessor_name()).add(user)
+                elif hasattr(field, 'attname') and field.attname:
+                    getattr(obj, field.attname).add(user)
+                elif hasattr(field, 'related_name') and field.related_name:
+                    getattr(obj, field.related_name).add(user)
+            elif field.many_to_one:
+                if hasattr(field.remote_field, 'get_accessor_name') and\
+                        field.remote_field.get_accessor_name():
+                    getattr(user, field.remote_field.get_accessor_name()).add(obj)
+                elif hasattr(field.remote_field, 'attname') and\
+                        field.remote_field.attname:
+                    getattr(user, field.remote_field.attname).add(obj)
+                elif hasattr(field.remote_field, 'related_name') and\
+                        field.remote_field.related_name:
+                    getattr(user, field.remote_field.related_name).add(obj)
+            elif field.one_to_one:
+                setattr(obj, field.name, user)
+                obj.save()
+        except DatabaseError as db_err:
+            if 'Duplicate entry' in str(db_err):
+                return
+            else:
+                logger.error("DB Error: %s", db_err)
+
 
     def __str__(self):
         return f'{self.get_instance()} ({self.object_model})'
