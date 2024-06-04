@@ -1,12 +1,18 @@
+import logging
+
 import jwt
 from django.conf import settings
 from django.contrib import auth
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.exceptions import PermissionDenied
+from django.db import DatabaseError
 from rest_framework import authentication
 
 from p1_auth.models import RelatedAssignment
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
 
 
 def decode_jwt(request):
@@ -111,19 +117,25 @@ class PlatformOneAuthentication(ModelBackend):
 
     def update_user_membership(self, jwt_decoded, user):
         if hasattr(settings, "USER_MEMBERSHIPS"):
-            for model_key in settings.USER_MEMBERSHIPS:
-                for field_name, jwt_key in\
-                        settings.USER_MEMBERSHIPS[model_key].items():
-                    if jwt_key in jwt_decoded:
-                        related = getattr(user, model_key)
-                        string_values = jwt_decoded[jwt_key]
-                        if isinstance(string_values, list):
-                            for single_value in string_values:
+            try:
+                for model_key in settings.USER_MEMBERSHIPS:
+                    for field_name, jwt_key in\
+                            settings.USER_MEMBERSHIPS[model_key].items():
+                        if jwt_key in jwt_decoded:
+                            related = getattr(user, model_key)
+                            string_values = jwt_decoded[jwt_key]
+                            if isinstance(string_values, list):
+                                for single_value in string_values:
+                                    related.update_or_create(
+                                        **{field_name: single_value})
+                            else:
                                 related.update_or_create(
-                                    **{field_name: single_value})
-                        else:
-                            related.update_or_create(
-                                **{field_name: string_values})
+                                    **{field_name: string_values})
+            except DatabaseError as db_err:
+                if 'Duplicate entry' in str(db_err):
+                    return
+                else:
+                    logger.error("DB Error: %s", db_err)
 
     def update_user_attributes(self, jwt_decoded, user):
         if hasattr(settings, "USER_ATTRIBUTES_MAP"):
