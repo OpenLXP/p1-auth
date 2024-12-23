@@ -28,7 +28,8 @@ class PlatformOneAuthentication(ModelBackend):
 
     def authenticate(self, request, *args, **kwargs):
         '''attempt to decode Platform One JWT'''
-        if hasattr(request, 'headers') and "Authorization" in request.headers:
+        if hasattr(request, 'headers') and "Authorization" in request.headers \
+                and request.headers["Authorization"].startswith("Bearer "):
             # decode JWT
             jwt_decoded = decode_jwt(request)
 
