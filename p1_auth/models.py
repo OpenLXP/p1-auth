@@ -1,6 +1,7 @@
 import logging
 from copy import deepcopy
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import DatabaseError, models
@@ -9,10 +10,13 @@ from django.db import DatabaseError, models
 logger = logging.getLogger(__name__)
 
 # Create your models here.
+
+
 class RelatedAssignment(models.Model):
     """Assign users to related model automatically"""
     object_model = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_pk = models.CharField('object ID', max_length=512)
+    foreign_object = GenericForeignKey("object_model", "object_pk")
 
     def check_attributes(self, jwt_json):
         """Check jwt for related attributes"""
@@ -45,11 +49,7 @@ class RelatedAssignment(models.Model):
 
     def get_instance(self):
         """Return model instance"""
-        try:
-            return self.object_model.get_object_for_this_type(
-                pk=self.object_pk)
-        except self.object_model.model_class().DoesNotExist:
-            return None
+        return self.foreign_object
 
     def validate(self, user, jwt_json):
         """Check attributes and make assignment on success"""
@@ -77,7 +77,8 @@ class RelatedAssignment(models.Model):
             elif field.many_to_one:
                 if hasattr(field.remote_field, 'get_accessor_name') and\
                         field.remote_field.get_accessor_name():
-                    getattr(user, field.remote_field.get_accessor_name()).add(obj)
+                    getattr(user, field.remote_field.get_accessor_name())\
+                        .add(obj)
                 elif hasattr(field.remote_field, 'attname') and\
                         field.remote_field.attname:
                     getattr(user, field.remote_field.attname).add(obj)
@@ -92,7 +93,6 @@ class RelatedAssignment(models.Model):
                 return
             else:
                 logger.error("DB Error: %s", db_err)
-
 
     def __str__(self):
         return f'{self.get_instance()} ({self.object_model})'
