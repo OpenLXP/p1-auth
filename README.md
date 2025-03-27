@@ -143,6 +143,28 @@ The field to use to populate the Username Field of the Django User model.  This 
 JWT_PREFERRED_USERNAME_FIELD = "email"
 ```
 
+### CUSTOM_AUTHENTICATION_LOGIC
+
+> [!CAUTION]
+> This gives access to the decoded JWT and the User model, so care should be taken when using this capability as sensitive data will be present.
+
+A list of callables or strings that accepts three parameters `jwt_decoded`, `user`, and `new`.
+
+`jwt_decoded` (dict): The dictionary containing the decoded JWT.
+
+`user` (AbstractBaseUser): The authenticated user object, it is expected to be an AbstractBaseUser, but can be any model.
+
+`new` (bool): A boolean that is true if the user object has been created by this request.
+
+```python
+CUSTOM_AUTHENTICATION_LOGIC = [
+    some_callable,
+    'path.to.some.other.callable',
+    'p1_auth.callables.raise_error_if_email_not_validated'
+]
+```
+
+
 ## Django Admin
 
 This section covers configurations that can be set in the Django Admin.
@@ -162,3 +184,28 @@ AttributeCheck allows specifying the JWT key (jwt_attribute) and an expected val
 Jwt_attribute should be a valid JSON key, or a JSON object for traversing the JWT to where the key will be.
 
 Expected_value is the expected JSON value.
+
+
+## Extending Functionality
+
+This section covers how to easily add custom logic that can't be handled within the Django Admin or settings such as USER_ATTRIBUTE_MAP.
+
+### CUSTOM_AUTHENTICATION_LOGIC
+
+> [!CAUTION]
+> This gives access to the decoded JWT and the User model, so care should be taken when using this capability as sensitive data will be present.
+
+As described within the settings section [CUSTOM_AUTHENTICATION_LOGIC](#custom_authentication_logic) allows passing callables with custom logic to be executed while authenticating the user.
+Each callable must accept 3 arguments: `jwt_decoded`, `user`, and `new`.
+
+`jwt_decoded` (dict): The dictionary containing the decoded JWT.
+
+`user` (AbstractBaseUser): The authenticated user object, it is expected to be an AbstractBaseUser, but can be any model.
+
+`new` (bool): A boolean that is true if the user object has been created by this request.
+
+Generic callables are included in [callables.py](p1_auth/callables.py) and are described below.
+
+#### raise_error_if_email_not_validated
+
+This callable checks the JWT for `email_verified`, if it does not contain `email_verified` with a value of `True` `PermissionDenied` is raised to fail the request with a `403 Forbidden` response.

@@ -125,3 +125,16 @@ USER_SUPERUSER_FLAG = "organization"
 # USER_SUPERUSER_VALUE = 123
 
 REQUIRE_JWT = True
+
+
+def test(a, b, c):
+    print(type(a))
+    print(type(b))
+    print(type(c))
+    print('custom logic ran')
+
+
+CUSTOM_AUTHENTICATION_LOGIC = [
+    test,
+    'p1_auth.callables.raise_error_if_email_not_validated',
+]

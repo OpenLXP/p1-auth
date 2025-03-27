@@ -7,6 +7,7 @@ from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError
+from django.utils.module_loading import import_string
 from rest_framework import authentication
 
 from p1_auth.models import RelatedAssignment
@@ -43,7 +44,7 @@ class PlatformOneAuthentication(ModelBackend):
             }
 
             # retrieve or create user based on username
-            user = auth.get_user_model().objects.get_or_create(**username)[0]
+            user, new = auth.get_user_model().objects.get_or_create(**username)
 
             if isinstance(user, AbstractBaseUser) and\
                     user.has_usable_password():
@@ -64,6 +65,8 @@ class PlatformOneAuthentication(ModelBackend):
 
             self.update_from_related_assignments(jwt_decoded, user)
 
+            self.update_custom(jwt_decoded, user, new)
+
             # return the user
             return user
         # Raise exception to fail authentication and logout session if
@@ -73,6 +76,24 @@ class PlatformOneAuthentication(ModelBackend):
             raise PermissionDenied()
         # fail this authentication method
         return None
+
+    def update_custom(self, jwt_decoded, user, new):
+        """
+        Handle custom logic when authenticating a user
+        Parameters:
+        jwt_decoded (dict): The dictionary containing the decoded JWT.
+        user (AbstractBaseUser): The authenticated user object, it is expected
+        to be an AbstractBaseUser, but can be any model.
+        new (bool): A boolean that is true if the user object has been created
+        by this request.
+        """
+        if hasattr(settings, "CUSTOM_AUTHENTICATION_LOGIC") and\
+                settings.CUSTOM_AUTHENTICATION_LOGIC:
+            for custom in settings.CUSTOM_AUTHENTICATION_LOGIC:
+                if isinstance(custom, str):
+                    custom = import_string(custom)
+                if callable(custom):
+                    custom(jwt_decoded, user, new)
 
     def update_from_related_assignments(self, jwt_decoded, user):
         assignments = RelatedAssignment.objects.all()
